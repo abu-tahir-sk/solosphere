@@ -2,12 +2,17 @@ import { useContext } from "react";
 import { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import axios from "axios";
+import toast from 'react-hot-toast';
 import { AuthContext } from "../providers/AuthProvider";
+import { useNavigate } from "react-router-dom";
+
 
 const AddJob = () => {
   const [startDate, setStartDate] = useState(new Date());
   const { user } = useContext(AuthContext);
-  const handleSubmit = (e) => {
+ const navigate = useNavigate()
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
 
@@ -30,7 +35,18 @@ const AddJob = () => {
       max_price,
       deadline,
       description,
+      bid_count: 0,
     };
+
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/add-job`, formData);
+      form.reset()
+      toast.success('Successfully toasted!')
+      navigate('/my-posted-jobs')
+    } catch (error) {
+      console.log(error);
+      toast.error("Something Went Wrong.")
+    }
   };
 
   return (

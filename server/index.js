@@ -25,6 +25,19 @@ async function run() {
     const db = client.db("solo-db");
     const jobsCollection = db.collection("jobs");
 
+    // add jobs
+    app.post("/add-job", async (req, res) => {
+      const jobData = req.body;
+      const result = await jobsCollection.insertOne(jobData);
+      console.log(result);
+      res.send(result);
+    });
+    // all jobs
+    app.get("/jobs", async (req, res) => {
+      const result = await jobsCollection.find().toArray();
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
