@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 
 const port = process.env.PORT || 9000;
@@ -35,6 +35,25 @@ async function run() {
     // all jobs
     app.get("/jobs", async (req, res) => {
       const result = await jobsCollection.find().toArray();
+      res.send(result);
+    });
+    // get all jobs  posted by a specific user
+    app.get("/jobs/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { "buyer.email": email };
+      const result = await jobsCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.delete("/job/:id", async (req, res) => {
+      const id = req.params.id;
+
+        if (!ObjectId.isValid(id)) {
+    return res.status(400).send({ error: "Invalid ObjectId" });
+  }
+
+
+      const query = { _id: new ObjectId(id) };
+      const result = await jobsCollection.deleteOne(query);
       res.send(result);
     });
 
