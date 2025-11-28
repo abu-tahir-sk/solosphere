@@ -24,11 +24,25 @@ async function run() {
   try {
     const db = client.db("solo-db");
     const jobsCollection = db.collection("jobs");
+    const bidsCollection = db.collection("bids");
 
     // add jobs
     app.post("/add-job", async (req, res) => {
       const jobData = req.body;
       const result = await jobsCollection.insertOne(jobData);
+      console.log(result);
+      res.send(result);
+    });
+    // update jobs
+    app.put("/update-job/:id", async (req, res) => {
+      const id = req.params.id;
+      const jobData = req.body;
+      const updated = {
+        $set: jobData,
+      };
+      const query = {_id: new ObjectId(id)}
+      const options = {upsert: true}
+      const result = await jobsCollection.updateOne(query,updated,options);
       console.log(result);
       res.send(result);
     });
@@ -44,16 +58,32 @@ async function run() {
       const result = await jobsCollection.find(query).toArray();
       res.send(result);
     });
+
+    // get a single job data by id from db
+    app.get("/job/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await jobsCollection.findOne(query);
+      res.send(result);
+    });
+
+    // delete
     app.delete("/job/:id", async (req, res) => {
       const id = req.params.id;
 
-        if (!ObjectId.isValid(id)) {
-    return res.status(400).send({ error: "Invalid ObjectId" });
-  }
-
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ error: "Invalid ObjectId" });
+      }
 
       const query = { _id: new ObjectId(id) };
       const result = await jobsCollection.deleteOne(query);
+      res.send(result);
+    });
+    // add bid
+    app.post("/add-bid", async (req, res) => {
+      const bidData = req.body;
+      const result = await bidsCollection.insertOne(bidData);
+      console.log(result);
       res.send(result);
     });
 
