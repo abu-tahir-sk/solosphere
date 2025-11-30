@@ -10,7 +10,7 @@ const AllJobs = () => {
     fetchAllJobs();
   }, []);
   const fetchAllJobs = async () => {
-    const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/jobs`);
+    const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/all-jobs`);
     setJobs(data);
     console.log(data);
   };

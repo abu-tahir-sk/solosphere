@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../providers/AuthProvider";
 import toast from "react-hot-toast";
+import { status } from "init";
 
 const JobDetails = () => {
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const [startDate, setStartDate] = useState(new Date());
   const { id } = useParams();
@@ -36,30 +38,54 @@ const JobDetails = () => {
     max_price,
     deadline,
     description,
-    bid_count,
-    buyer
+    _id,
+    buyer,
   } = job || {};
 
   // handle form sumbmit
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const form = e.target;
     const price = form.price.value;
     const email = user?.email;
     const comment = form.comment.value;
+    const  jobId = _id;
 
-    if(user?.email === buyer?.email) return toast.error('action not permit')
+    if (user?.email === buyer?.email) return toast.error("action not permit");
 
-    if (compareAsc(new Date(), Date(deadline)) === 1)
-      return toast.error("deadline over");
-   
-    if (price > max_price) return toast.error('Deadline Crossed , Bidding forbidden');
+    // if (compareAsc(new Date(), Date(deadline)) === 1)
+    //   return toast.error("deadline over");
+
+    // if (price > max_price) return toast.error('Deadline Crossed , Bidding forbidden');
     //offered deadline is within sellers deadline validation
-    if(compareAsc(new Date(startDate),new Date(deadline)) === 1) return toast.error('offer a date within deadline')
+    // if(compareAsc(new Date(startDate),new Date(deadline)) === 1) return toast.error('offer a date within deadline')
 
-    const bidData = { price, email, comment, deadline };
+    const bidData = {
+      price,
+      email,
+      comment,
+      deadline: startDate,
+      jobId,
+      title,
+      category,
+      status: "Pending",
+      buyer: buyer?.email,
+    };
+
+    try {
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_API_URL}/add-bid`,
+        bidData
+      );
+      form.reset();
+      toast.success("bid Successfully toasted!");
+      navigate('/my-bids')
+      console.log(data);
+    } catch (error) {
+      console.log(error);
+      toast.error("Something Went Wrong.");
+    }
   };
-
 
   return (
     <div className="flex flex-col md:flex-row justify-around gap-5  items-center min-h-[calc(100vh-306px)] md:max-w-screen-xl mx-auto ">

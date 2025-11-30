@@ -40,9 +40,9 @@ async function run() {
       const updated = {
         $set: jobData,
       };
-      const query = {_id: new ObjectId(id)}
-      const options = {upsert: true}
-      const result = await jobsCollection.updateOne(query,updated,options);
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const result = await jobsCollection.updateOne(query, updated, options);
       console.log(result);
       res.send(result);
     });
@@ -82,10 +82,68 @@ async function run() {
     // add bid
     app.post("/add-bid", async (req, res) => {
       const bidData = req.body;
+
+      // if a user placed a bid already  in this job
+      const query = { email: bidData.email, jobId: bidData.jobId };
+      const alreadyExist = await bidsCollection.findOne(query);
+      console.log(alreadyExist);
+      if (alreadyExist) {
+        return res
+          .status(400)
+          .send("You have already placed a bid on this job");
+      }
+
+      // 1. save data in bids collection
       const result = await bidsCollection.insertOne(bidData);
+      // 2. increate bid count in jobs collection
+      const filter = { _id: new ObjectId(bidData.jobId) };
+      const update = {
+        $inc: {
+          bid_count: 1,
+        },
+      };
+      const updateBidCount = await jobsCollection.updateOne(filter, update);
       console.log(result);
       res.send(result);
     });
+    // get all bids for  a specific user
+    app.get("/bids/:email", async (req, res) => {
+      const isBuyer = req.query.buyer;
+      const email = req.params.email;
+      let query = {};
+      if (isBuyer) {
+        query.buyer = email;
+      } else {
+        query.email = email;
+      }
+
+      const result = await bidsCollection.find(query).toArray();
+      res.send(result);
+    });
+    //update bid status
+    app.patch("/bid-status-update/:id", async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
+
+      const filter = { _id: new ObjectId(id) };
+      const update = {
+        $set: { status: String(status) },
+      };
+      const result = await bidsCollection.updateOne(filter, update);
+      res.send(result);
+    });
+    // send a ping to confirm a successful connection
+    app.get("/all-jobs", async (req, res) => {
+      const result = await jobsCollection.find().toArray();
+      res.send(result);
+    });
+    // // get all bid requests for  a specific user
+    // app.get("/bid-requests/:email", async (req, res) => {
+    //   const email = req.params.email;
+    //   const query = { buyer: email };
+    //   const result = await bidsCollection.find(query).toArray();
+    //   res.send(result);
+    // });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
