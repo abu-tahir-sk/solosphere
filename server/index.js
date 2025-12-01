@@ -2,11 +2,18 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
 const port = process.env.PORT || 9000;
 const app = express();
 
-app.use(cors());
+const corsOptions = {
+  origin: ["http://localhost:5173", "http://localhost:5174"],
+  credentials: true,
+  optionalSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.qha6rup.mongodb.net/?appName=Cluster0`;
@@ -20,11 +27,43 @@ const client = new MongoClient(uri, {
   },
 });
 
+// verify token
+const verifyToken = (req, res, next) => {
+  console.log("hello");
+  next();
+};
+
 async function run() {
   try {
     const db = client.db("solo-db");
     const jobsCollection = db.collection("jobs");
     const bidsCollection = db.collection("bids");
+
+    // generate jwt
+    app.post("/jwt", async (req, res) => {
+      const email = req.body;
+      const token = jwt.sign(email, process.env.SECRET_KEY, {
+        expiresIn: "12h",
+      });
+      console.log(token);
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
+    // logout || clear cookie from browser
+    app.get("/logout", async (req, res) => {
+      res
+        .clearCookie("token", {
+          maxAge: 0,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
 
     // add jobs
     app.post("/add-job", async (req, res) => {
@@ -46,7 +85,7 @@ async function run() {
       console.log(result);
       res.send(result);
     });
-    // all jobs
+    // // all jobs
     app.get("/jobs", async (req, res) => {
       const result = await jobsCollection.find().toArray();
       res.send(result);
@@ -107,7 +146,7 @@ async function run() {
       res.send(result);
     });
     // get all bids for  a specific user
-    app.get("/bids/:email", async (req, res) => {
+    app.get("/bids/:email", verifyToken, async (req, res) => {
       const isBuyer = req.query.buyer;
       const email = req.params.email;
       let query = {};
@@ -134,7 +173,19 @@ async function run() {
     });
     // send a ping to confirm a successful connection
     app.get("/all-jobs", async (req, res) => {
-      const result = await jobsCollection.find().toArray();
+      const filter = req.query.filter;
+      const search = req.query.search;
+      const sort = req.query.sort;
+      let options = {};
+      if (sort) options = { sort: { deadline: sort === "asc" ? 1 : -1 } };
+      let query = {
+        title: {
+          $regex: search,
+          $options: "i",
+        },
+      };
+      if (filter) query.category = filter;
+      const result = await jobsCollection.find(query, options).toArray();
       res.send(result);
     });
     // // get all bid requests for  a specific user
